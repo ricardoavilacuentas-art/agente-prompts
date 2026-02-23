@@ -174,7 +174,7 @@ def ejecutar_herramienta(nombre, argumentos):
         return crear_prompt_universal(**argumentos)
 
 def agente(peticion_usuario):
-    client = anthropic.Anthropic(api_key="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" \
+    client = anthropic.Anthropic(api_key="TU_API_KEY_AQUI" \
     "")
 
     mensajes = [{"role": "user", "content": peticion_usuario}]
