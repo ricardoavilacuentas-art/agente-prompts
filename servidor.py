@@ -1,19 +1,24 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import anthropic
+import os
 
 app = Flask(__name__)
 CORS(app)
+
+@app.route('/')
+def index():
+    return send_from_directory('.', 'agente_prompts.html')
+
+@app.route('/agente_prompts.html')
+def html():
+    return send_from_directory('.', 'agente_prompts.html')
 
 @app.route('/generar', methods=['POST'])
 def generar():
     datos = request.json
     api_key = datos.get('apiKey')
     mensaje = datos.get('mensaje')
-    sistema = datos.get('sistema')
-
-    print("API Key recibida:", api_key[:20] if api_key else "NINGUNA")
-    print("Mensaje recibido:", mensaje[:50] if mensaje else "NINGUNO")
 
     system_prompt = """Eres un ingeniero experto mundial en crear y perfeccionar prompts para IAs.
 
@@ -31,32 +36,21 @@ STABLE DIFFUSION: Palabras de calidad: masterpiece, best quality, ultra-detailed
 
 GEMINI: Sé conversacional. Proporciona contexto amplio. Combina rol + tarea + formato.
 
-CLAUDE COPILOT: Especifica lenguaje y versión. Describe claramente la función. Incluye casos de uso. Pide comentarios en el código.
+GITHUB COPILOT: Especifica lenguaje y versión. Describe claramente la función. Incluye casos de uso. Pide comentarios en el código.
 
 CÓMO DEBES COMPORTARTE:
-
-1. Cuando el usuario describe lo que necesita, SIEMPRE haz entre 2 y 4 preguntas clave antes de generar el prompt. Ejemplos de preguntas útiles:
-   - ¿Para qué IA es el prompt?
-   - ¿Cuál es el tono deseado?
-   - ¿Quién es la audiencia?
-   - ¿Qué formato quieres en la respuesta?
-   - ¿Hay algo que el prompt NO debe incluir?
-
-2. Cuando el usuario ya responde tus preguntas, genera el prompt optimizado completo y listo para copiar.
-
-3. Cuando el usuario te da un prompt existente para mejorar, analízalo, identifica sus debilidades y entrégale una versión mejorada explicando qué cambiaste y por qué.
-
-4. Después de generar cada prompt, pregunta: ¿Quieres ajustar algo o perfeccionarlo más?
-
+1. Cuando el usuario describe lo que necesita, SIEMPRE haz entre 2 y 4 preguntas clave antes de generar el prompt.
+2. Cuando el usuario responde tus preguntas, genera el prompt optimizado completo y listo para copiar.
+3. Cuando el usuario te da un prompt existente para mejorar, analízalo y entrega una versión mejorada.
+4. Después de generar cada prompt pregunta: ¿Quieres ajustar algo o perfeccionarlo más?
 5. Nunca generes un prompt genérico. Siempre busca el máximo nivel de detalle y precisión."""
 
     try:
         client = anthropic.Anthropic(api_key=api_key)
-        
         mensajes = datos.get('historial', [])
         if not mensajes:
             mensajes = [{"role": "user", "content": mensaje}]
-        
+
         respuesta = client.messages.create(
             model="claude-opus-4-6",
             max_tokens=2048,
@@ -65,8 +59,9 @@ CÓMO DEBES COMPORTARTE:
         )
         return jsonify({"resultado": respuesta.content[0].text})
     except Exception as e:
-        print("ERROR DETALLADO:", str(e))
+        print("ERROR:", str(e))
         return jsonify({"error": str(e)}), 400
 
 if __name__ == '__main__':
-    app.run(port=8081)
+    port = int(os.environ.get('PORT', 8081))
+    app.run(host='0.0.0.0', port=port)
